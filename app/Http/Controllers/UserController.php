@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Helpers\Constant;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -14,11 +16,17 @@ class UserController extends Controller
 
         // Restrict access to Admins
         if ($admin->role !== 'Admin') {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return response()->apiError(Constant::AUTHORIZATION_ERROR,'Unauthorized',403);
         }
 
-        $users = User::where('company_id', $admin->company_id)->get();
-        return response()->json($users, 200);
+        $perPage = $request->input('per_page', 10);
+
+        $users = User::with(['company'])
+            ->where('company_id',$admin->company_id)
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+
+        return UserResource::collection($users);
     }
 
     public function store(Request $request)
